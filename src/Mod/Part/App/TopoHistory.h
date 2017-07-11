@@ -26,6 +26,7 @@
 #include <iostream>
 #include <memory>
 #include <BRepBuilderAPI_MakeShape.hxx>
+#include <TDF_Data.hxx>
 
 #include <Base/BaseClass.h>
 
@@ -59,6 +60,10 @@ public:
     bool isDeleted(const TopoShape &);
 
     std::shared_ptr<BRepBuilderAPI_MakeShape> shapeMaker;
+    /// Data framework storing the history
+    Handle(TDF_Data) dataFW;
+
+    void buildHistory(const std::shared_ptr<BRepBuilderAPI_MakeShape> &value);
 };
 
 }

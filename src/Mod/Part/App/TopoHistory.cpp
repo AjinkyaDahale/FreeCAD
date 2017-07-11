@@ -25,6 +25,7 @@
 #include <TopTools_ListOfShape.hxx>
 #include <TopTools_ListIteratorOfListOfShape.hxx>
 #include <Standard_Failure.hxx>
+#include <TDF_Data.hxx>
 
 #include "TopoHistory.h"
 #include "TopoShape.h"
@@ -33,12 +34,12 @@ using namespace Part;
 
 TYPESYSTEM_SOURCE(Part::TopoHistory, Base::BaseClass);
 
-TopoHistory::TopoHistory()
+TopoHistory::TopoHistory(): dataFW(new TDF_Data())
 {
 }
 
 TopoHistory::TopoHistory(const TopoHistory &history)
-    : shapeMaker(history.shapeMaker)
+    : shapeMaker(history.shapeMaker), dataFW(history.dataFW)
 {
 }
 
@@ -88,4 +89,8 @@ bool TopoHistory::isDeleted(const TopoShape &oldShape)
     }
     Standard_Failure::Raise("History is empty");
     return false; // just to silence compiler warning
+}
+void TopoHistory::buildHistory(const std::shared_ptr<BRepBuilderAPI_MakeShape> &value)
+{
+    shapeMaker = value;
 }

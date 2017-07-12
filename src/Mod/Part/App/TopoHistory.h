@@ -63,7 +63,9 @@ public:
     /// Data framework storing the history
     Handle(TDF_Data) dataFW;
 
-    void buildHistory(const std::shared_ptr<BRepBuilderAPI_MakeShape> &value);
+    void buildHistory(const std::shared_ptr<BRepBuilderAPI_MakeShape> &mkShape,
+                      TopAbs_ShapeEnum shType, const TopoDS_Shape& oldS,
+                      const TopoDS_Shape& newS);
 };
 
 }

@@ -26,13 +26,20 @@
 #include <TopTools_ListIteratorOfListOfShape.hxx>
 #include <Standard_Failure.hxx>
 #include <TDF_Data.hxx>
+#include <TNaming_Builder.hxx>
+#include <TNaming_Tool.hxx>
+#include <TNaming_Builder.hxx>
+#include <TNaming_Selector.hxx>
+#include <TNaming_NamedShape.hxx>
+#include <TNaming_UsedShapes.hxx>
+#include <TopExp_Explorer.hxx>
 
 #include "TopoHistory.h"
 #include "TopoShape.h"
 
 using namespace Part;
 
-TYPESYSTEM_SOURCE(Part::TopoHistory, Base::BaseClass);
+TYPESYSTEM_SOURCE(Part::TopoHistory, Base::BaseClass)
 
 TopoHistory::TopoHistory(): dataFW(new TDF_Data())
 {
@@ -90,7 +97,46 @@ bool TopoHistory::isDeleted(const TopoShape &oldShape)
     Standard_Failure::Raise("History is empty");
     return false; // just to silence compiler warning
 }
-void TopoHistory::buildHistory(const std::shared_ptr<BRepBuilderAPI_MakeShape> &value)
+
+void TopoHistory::buildHistory(const std::shared_ptr<BRepBuilderAPI_MakeShape> &mkShape,
+                               TopAbs_ShapeEnum shType, const TopoDS_Shape &oldS,
+                               const TopoDS_Shape &newS)
 {
-    shapeMaker = value;
+    TDF_Label rootL = dataFW->Root();
+
+    TDF_Label baseLabel = TDF_TagSource::NewChild(rootL);
+    TNaming_Builder baseBuilder(baseLabel);
+    baseBuilder.Generated(oldS);
+
+    TopExp_Explorer baseEx(oldS, shType);
+    for (; baseEx.More(); baseEx.Next()) {
+        TDF_Label faceLabel = TDF_TagSource::NewChild(baseLabel);
+        TNaming_Builder faceBuilder(faceLabel);
+        faceBuilder.Generated(baseEx.Current());
+    }
+
+    TDF_Label modLabel = TDF_TagSource::NewChild(rootL);
+    TNaming_Builder modBuilder(modLabel);
+    modBuilder.Modify(oldS, newS);
+
+    baseEx.ReInit();
+    TDF_Label modifFacesLabel = TDF_TagSource::NewChild(modLabel);
+    TDF_Label delFacesLabel = TDF_TagSource::NewChild(modLabel);
+    TNaming_Builder modifFacesBuilder(modifFacesLabel);
+    TNaming_Builder delFacesBuilder(delFacesLabel);
+
+    for (; baseEx.More(); baseEx.Next()) {
+        TopoDS_Shape oldSubShape = baseEx.Current(), newSubShape;
+        if (mkShape->IsDeleted(oldSubShape)) {
+            delFacesBuilder.Delete(oldSubShape);
+            continue;
+        }
+        for (TopTools_ListIteratorOfListOfShape it(mkShape->Modified(oldSubShape));
+             it.More(); it.Next()) {
+            newSubShape = it.Value();
+            if (!oldSubShape.IsSame(newSubShape)) {
+                modifFacesBuilder.Modify(oldSubShape, newSubShape);
+            }
+        }
+    }
 }

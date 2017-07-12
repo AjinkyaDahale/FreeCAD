@@ -1466,6 +1466,10 @@ TopoShape TopoShape::cut(const TopoShape &shape, bool withHistory) const
     TopoShape resShape(mkCut->Shape());
     if (withHistory) {
         resShape.history.shapeMaker = mkCut;
+        resShape.history.buildHistory(mkCut, TopAbs_FACE, this->_Shape,
+                                      resShape.getShape());
+        resShape.history.buildHistory(mkCut, TopAbs_FACE, shape.getShape(),
+                                      resShape.getShape());
     }
     return resShape;
 }

@@ -22,6 +22,7 @@
 
 #include "PreCompiled.h"
 
+#include <TopTools_IndexedMapOfShape.hxx>
 #include <TopTools_ListOfShape.hxx>
 #include <TopTools_ListIteratorOfListOfShape.hxx>
 #include <Standard_Failure.hxx>
@@ -60,15 +61,27 @@ void TopoHistory::operator =(const TopoHistory &history)
 std::vector<TopoShape> TopoHistory::modified(const TopoShape &oldShape)
 {
     std::vector<TopoShape> newShapes;
-    if (this->shapeMaker.get()) {
-        TopoDS_Shape _shape = oldShape.getShape();
-        const TopTools_ListOfShape& _newShapes = this->shapeMaker->Modified(_shape);
-        for(TopTools_ListIteratorOfListOfShape it(_newShapes); it.More(); it.Next()){
-            newShapes.push_back(TopoShape(it.Value()));
-        }
-        return newShapes;
+//    if (this->shapeMaker.get()) {
+//        TopoDS_Shape _shape = oldShape.getShape();
+//        const TopTools_ListOfShape& _newShapes = this->shapeMaker->Modified(_shape);
+//        for(TopTools_ListIteratorOfListOfShape it(_newShapes); it.More(); it.Next()){
+//            newShapes.push_back(TopoShape(it.Value()));
+//        }
+//        return newShapes;
+//    }
+//    Standard_Failure::Raise("History is empty");
+    TDF_Label selLabel = TDF_TagSource::NewChild(dataFW->Root());
+    TNaming_Selector selector(selLabel);
+    Standard_Boolean selected = selector.Select(oldShape);
+    TDF_LabelMap scope;
+    Standard_Boolean solved = selector.Solve(scope);
+
+    if (solved) {
+        newShapes.push_back(
+                    TopoShape(
+                        TNaming_Tool::GetShape(selector.NamedShape())));
     }
-    Standard_Failure::Raise("History is empty");
+    Standard_Failure::Raise("Selector::Solve failed");
     return newShapes; // just to silence compiler warning
 }
 
@@ -86,7 +99,6 @@ std::vector<TopoShape> TopoHistory::generated(const TopoShape &oldShape)
     Standard_Failure::Raise("History is empty");
     return newShapes; // just to silence compiler warning
 }
-
 
 bool TopoHistory::isDeleted(const TopoShape &oldShape)
 {

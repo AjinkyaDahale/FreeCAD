@@ -31,6 +31,7 @@
 #include <App/ComplexGeoData.h>
 
 #include "TopoHistory.h"
+#include "TopoParaHistory.h"
 
 class gp_Ax1;
 class gp_Ax2;
@@ -257,6 +258,7 @@ public:
     //@}
 
     TopoHistory history;
+    TopoParaHistory paraHistory;
 
 private:
     TopoDS_Shape _Shape;

@@ -55,6 +55,7 @@ void TopoParaHistory::operator =(const TopoParaHistory &history)
 {
     if (this != &history) {
         this->shapeMaker = history.shapeMaker;
+        this->dataFW = history.dataFW;
     }
 }
 

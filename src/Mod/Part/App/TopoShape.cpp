@@ -248,7 +248,7 @@ TopoShape::TopoShape(const TopoDS_Shape& shape)
 }
 
 TopoShape::TopoShape(const TopoShape& shape)
-  : history(shape.history), _Shape(shape._Shape)
+  : history(shape.history), paraHistory(shape.paraHistory), _Shape(shape._Shape)
 {
 }
 
@@ -404,6 +404,7 @@ void TopoShape::operator = (const TopoShape& sh)
 {
     if (this != &sh) {
         this->history = sh.history;
+        this->paraHistory = sh.paraHistory;
         this->_Shape = sh._Shape;
     }
 }

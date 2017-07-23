@@ -153,3 +153,42 @@ void TopoParaHistory::buildHistory(const std::shared_ptr<BRepBuilderAPI_MakeShap
         }
     }
 }
+
+void TopoParaHistory::buildHistory(const TopoDS_Shape &oldS, const TopoDS_Shape &newS,
+                                   const std::vector<TopoDS_Shape> &oldSubShapes,
+                                   const std::vector<TopoDS_Shape> &newSubShapes)
+{
+    TDF_Label rootL = dataFW->Root();
+
+    TDF_Label baseLabel = TDF_TagSource::NewChild(rootL);
+    TNaming_Builder baseBuilder(baseLabel);
+    baseBuilder.Generated(oldS);
+
+    for (std::vector<TopoDS_Shape>::const_iterator it = oldSubShapes.begin();
+         it != oldSubShapes.end(); ++it) {
+        TDF_Label faceLabel = TDF_TagSource::NewChild(baseLabel);
+        TNaming_Builder faceBuilder(faceLabel);
+        faceBuilder.Generated(*it);
+    }
+
+    TDF_Label modLabel = TDF_TagSource::NewChild(rootL);
+    TNaming_Builder modBuilder(modLabel);
+    modBuilder.Modify(oldS, newS);
+
+    TDF_Label modifFacesLabel = TDF_TagSource::NewChild(modLabel);
+    TDF_Label delFacesLabel = TDF_TagSource::NewChild(modLabel);
+    TNaming_Builder modifFacesBuilder(modifFacesLabel);
+    TNaming_Builder delFacesBuilder(delFacesLabel);
+
+    for (std::vector<TopoDS_Shape>::const_iterator it1 = oldSubShapes.begin(),
+         it2 = newSubShapes.begin();
+         it1 != oldSubShapes.end(); ++it1, ++it2) {
+        if (it2->IsNull()) {
+            delFacesBuilder.Delete(*it1);
+            continue;
+        }
+        if (!it1->IsSame(*it2)) {
+            modifFacesBuilder.Modify(*it1, *it2);
+        }
+    }
+}

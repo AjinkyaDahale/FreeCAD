@@ -66,6 +66,10 @@ public:
     void buildHistory(const std::shared_ptr<BRepBuilderAPI_MakeShape> &mkShape,
                       TopAbs_ShapeEnum shType, const TopoDS_Shape& oldS,
                       const TopoDS_Shape& newS);
+
+    void buildHistory(const TopoDS_Shape& oldS, const TopoDS_Shape& newS,
+                      const std::vector<TopoDS_Shape>& oldSubShapes,
+                      const std::vector<TopoDS_Shape>& newSubShapes);
 };
 
 }

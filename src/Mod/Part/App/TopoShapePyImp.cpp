@@ -75,6 +75,7 @@
 #include <Mod/Part/App/TopoShapePy.h>
 #include <Mod/Part/App/TopoShapePy.cpp>
 #include <Mod/Part/App/TopoHistoryPy.h>
+#include <Mod/Part/App/TopoParaHistoryPy.h>
 
 #include "OCCError.h"
 #include <Mod/Part/App/GeometryPy.h>
@@ -2914,6 +2915,11 @@ Py::String TopoShapePy::getShapeType(void) const
 Py::Object TopoShapePy::getHistory(void) const
 {
     return Py::asObject(new TopoHistoryPy(new TopoHistory(this->getTopoShapePtr()->history)));
+}
+
+Py::Object TopoShapePy::getParaHistory(void) const
+{
+    return Py::asObject(new TopoParaHistoryPy(new TopoParaHistory(this->getTopoShapePtr()->paraHistory)));
 }
 
 Py::String TopoShapePy::getOrientation(void) const

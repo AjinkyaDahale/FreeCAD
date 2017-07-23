@@ -773,6 +773,12 @@ infos contains additional info on the solutions. It is a list of tuples:
       </Documentation>
       <Parameter Name="History" Type="Object" />
     </Attribute>
+    <Attribute Name="ParaHistory" ReadOnly="true">
+      <Documentation>
+        <UserDocu>Returns the parahistory of the shape, if stored.</UserDocu>
+      </Documentation>
+      <Parameter Name="ParaHistory" Type="Object" />
+    </Attribute>
     <Attribute Name="Orientation" ReadOnly="false">
       <Documentation>
         <UserDocu>Returns the orientation of the shape.</UserDocu>

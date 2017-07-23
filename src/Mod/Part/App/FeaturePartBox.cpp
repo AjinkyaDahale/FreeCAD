@@ -57,6 +57,8 @@ short Box::mustExecute() const
 
 App::DocumentObjectExecReturn *Box::execute(void)
 {
+    // TODO: From para-history of dependencies modify parameters if needed.
+
     double L = Length.getValue();
     double W = Width.getValue();
     double H = Height.getValue();
@@ -71,10 +73,41 @@ App::DocumentObjectExecReturn *Box::execute(void)
         return new App::DocumentObjectExecReturn("Height of box too small");
 
     try {
+        // TODO: Perform the main execute operation
+        TopoShape oldShape = this->Shape.getShape();
+
         // Build a box using the dimension attributes
-        BRepPrimAPI_MakeBox mkBox(L, W, H);
-        TopoDS_Shape ResultShape = mkBox.Shape();
+        std::shared_ptr<BRepPrimAPI_MakeBox>
+                mkBox(new BRepPrimAPI_MakeBox(L, W, H));
+        TopoShape ResultShape(mkBox->Shape());
+        ResultShape.history.shapeMaker = mkBox;
         this->Shape.setValue(ResultShape);
+
+        // TODO: Create para-history for this feature
+        std::vector<TopoDS_Shape> oldSubShapes, newSubShapes;
+        if (!oldShape.isNull()) {
+            std::vector<TopoDS_Shape> oldSubShapes, newSubShapes;
+            std::shared_ptr<BRepPrimAPI_MakeBox> oldMkBox =
+                    std::static_pointer_cast<BRepPrimAPI_MakeBox>
+                    (oldShape.history.shapeMaker);
+
+            oldSubShapes.push_back(oldMkBox->TopFace());
+            oldSubShapes.push_back(oldMkBox->BottomFace());
+            oldSubShapes.push_back(oldMkBox->FrontFace());
+            oldSubShapes.push_back(oldMkBox->BackFace());
+            oldSubShapes.push_back(oldMkBox->LeftFace());
+            oldSubShapes.push_back(oldMkBox->RightFace());
+
+            newSubShapes.push_back(mkBox->TopFace());
+            newSubShapes.push_back(mkBox->BottomFace());
+            newSubShapes.push_back(mkBox->FrontFace());
+            newSubShapes.push_back(mkBox->BackFace());
+            newSubShapes.push_back(mkBox->LeftFace());
+            newSubShapes.push_back(mkBox->RightFace());
+
+            ResultShape.paraHistory.buildHistory(oldShape, ResultShape,
+                                                 oldSubShapes, newSubShapes);
+        }
     }
     catch (Standard_Failure) {
         Handle(Standard_Failure) e = Standard_Failure::Caught();

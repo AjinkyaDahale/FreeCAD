@@ -59,10 +59,6 @@ public:
     std::vector<TopoShape> generated(const TopoShape&);
     bool isDeleted(const TopoShape &);
 
-    std::shared_ptr<BRepBuilderAPI_MakeShape> shapeMaker;
-    /// Data framework storing the history
-    Handle(TDF_Data) dataFW;
-
     void buildHistory(const std::shared_ptr<BRepBuilderAPI_MakeShape> &mkShape,
                       TopAbs_ShapeEnum shType, const TopoDS_Shape& oldS,
                       const TopoDS_Shape& newS);
@@ -70,7 +66,11 @@ public:
     void buildHistory(const TopoDS_Shape& oldS, const TopoDS_Shape& newS,
                       const std::vector<TopoDS_Shape>& oldSubShapes,
                       const std::vector<TopoDS_Shape>& newSubShapes);
-};
+
+    /// TODO: Get rid of this variable and any other methods using this
+    std::shared_ptr<BRepBuilderAPI_MakeShape> shapeMaker;
+    /// Data framework storing the history
+    Handle(TDF_Data) dataFW;};
 
 }
 

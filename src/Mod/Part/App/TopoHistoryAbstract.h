@@ -20,14 +20,16 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef TOPOHISTORY_H
-#define TOPOHISTORY_H
+#ifndef TOPOHISTORYABSTRACT_H
+#define TOPOHISTORYABSTRACT_H
+
+#include "PreCompiled.h"
 
 #include <iostream>
 #include <memory>
 #include <BRepBuilderAPI_MakeShape.hxx>
 
-#include "TopoHistoryAbstract.h"
+#include <Base/BaseClass.h>
 
 namespace Part {
 
@@ -44,23 +46,23 @@ class TopoShape;
  * a "para-history" between two shapes generated with slightly different
  * methods (like with a different pad length somewhere in their history).
  */
-class PartExport TopoHistory : public Part::TopoHistoryAbstract
+class PartExport TopoHistoryAbstract : public Base::BaseClass
 {
     TYPESYSTEM_HEADER();
 
 public:
-    TopoHistory();
-    TopoHistory(const TopoHistory&);
+    TopoHistoryAbstract(){}
+//    TopoHistoryAbstract(const TopoHistory&);
 
-    void operator = (const TopoHistory&);
+//    void operator = (const TopoHistory&);
 
     virtual std::vector<TopoShape> modified(const TopoShape&);
     virtual std::vector<TopoShape> generated(const TopoShape&);
     virtual bool isDeleted(const TopoShape &);
 
-    std::shared_ptr<BRepBuilderAPI_MakeShape> shapeMaker;
+//    std::shared_ptr<BRepBuilderAPI_MakeShape> shapeMaker;
 };
 
 }
 
-#endif // TOPOHISTORY_H
+#endif // TOPOHISTORYABSTRACT_H

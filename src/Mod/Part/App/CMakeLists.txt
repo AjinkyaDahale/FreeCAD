@@ -351,6 +351,8 @@ SET(Part_SRCS
     ProgressIndicator.h
     TopoShape.cpp
     TopoShape.h
+    TopoHistoryAbstract.cpp
+    TopoHistoryAbstract.h
     TopoHistory.cpp
     TopoHistory.h
     TopoParaHistory.cpp

@@ -1006,20 +1006,16 @@ void CmdSketcherRestoreInternalAlignmentGeometry::activated(int iMsg)
         return !hasInternalGeo; // so it's removed
     };
 
-    std::vector<int> SubGeoIds(SubNames.size());
-    std::transform(SubNames.begin(), SubNames.end(), SubGeoIds.begin(), getEdgeGeoId);
-
-    // Only one GeoId, and only for supported types
-    SubGeoIds.erase(std::unique(SubGeoIds.begin(), SubGeoIds.end()), SubGeoIds.end());
-    SubGeoIds.erase(std::remove_if(SubGeoIds.begin(), SubGeoIds.end(), noInternalGeo),
-                    SubGeoIds.end());
-
+    // Only one time each GeoId
     // Handle highest GeoIds first to minimize GeoIds changing
     // TODO: this might not completely resolve GeoIds changing
-    std::sort(SubGeoIds.begin(), SubGeoIds.end(), std::greater<int>());
+    std::set<int, std::greater<int>> SubGeoIds;
+    std::transform(SubNames.begin(), SubNames.end(), std::inserter(SubGeoIds, SubGeoIds.begin()), getEdgeGeoId);
 
     // go through the selected subelements
     for (const auto& GeoId : SubGeoIds) {
+        if (noInternalGeo(GeoId)) // unsupported type
+            continue;
         int currentgeoid = Obj->getHighestCurveIndex();
 
         try {

@@ -27,7 +27,9 @@
 #ifndef _PreComp_
 # include <Inventor/nodes/SoMaterial.h>
 # include <Inventor/nodes/SoCoordinate3.h>
+# include <Inventor/nodes/SoCoordinate4.h>
 # include <Inventor/nodes/SoLineSet.h>
+# include <Inventor/nodes/SoNurbsCurve.h>
 # include <Inventor/nodes/SoGroup.h>
 # include <Inventor/nodes/SoMarkerSet.h>
 # include <Inventor/nodes/SoText2.h>
@@ -151,6 +153,8 @@ struct GeometryLayerNodes {
     std::vector<SoMaterial *> &     CurvesMaterials;    // The materials for the curves
     std::vector<SoCoordinate3 *> &  CurvesCoordinate;   // The coordinates of the segments of the curves
     std::vector<SoLineSet *> &      CurveSet;           // The set of curves
+    std::vector<SoCoordinate4 *> &  NurbsCoordinate;    // The coordinates of the poles of the NURBS
+    std::vector<SoNurbsCurve *> &   NurbsSet;           // The set of nurbs
     //@}
 };
 
@@ -308,6 +312,8 @@ struct EditModeScenegraphNodes {
     std::vector<SoCoordinate3 *>    CurvesCoordinate;
     std::vector<SoDrawStyle *>      CurvesDrawStyle;
     std::vector<SoLineSet *>        CurveSet;
+    std::vector<SoCoordinate4 *>    NurbsCoordinate;
+    std::vector<SoNurbsCurve *>     NurbsSet;
     //@}
 
     /** @name Axes nodes*/

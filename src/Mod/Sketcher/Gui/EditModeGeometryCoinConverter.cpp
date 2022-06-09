@@ -237,6 +237,27 @@ void EditModeGeometryCoinConverter::convert(const Sketcher::GeoListFacade & geol
         geometryLayerNodes.CurvesCoordinate[l]->point.finishEditing();
         geometryLayerNodes.CurveSet[l]->numVertices.finishEditing();
         geometryLayerNodes.PointsCoordinate[l]->point.finishEditing();
+
+        // Hardcoded NURBS curve for testing
+        if (true) {
+            float controlPoints[][4] = {
+                {0.0, -5.0,     0.0, 1.0},
+                {2.5, -2.5,     0.0, 0.5},
+                {2.5, -0.66987, 0.0, 1.0},
+                {0.0,  1.94013, 0.0, 0.5},
+                {-2.5, -0.66987, 0.0, 1.0},
+                {-2.5, -2.5,     0.0, 0.5},
+                {0.0, -5.0,     0.0, 1.0}
+            };
+            float knotVector[] = {0, 0, 0, 1, 1, 2, 2, 3, 3, 3};
+            geometryLayerNodes.NurbsCoordinate[l]->point.startEditing();
+            geometryLayerNodes.NurbsSet[l]->knotVector.startEditing();
+            geometryLayerNodes.NurbsCoordinate[l]->point.setValues(0, 7, controlPoints);
+            geometryLayerNodes.NurbsSet[l]->numControlPoints = 7;
+            geometryLayerNodes.NurbsSet[l]->knotVector.setValues(0, 7, knotVector);
+            geometryLayerNodes.NurbsCoordinate[l]->point.finishEditing();
+            geometryLayerNodes.NurbsSet[l]->knotVector.finishEditing();
+        }
     }
 }
 

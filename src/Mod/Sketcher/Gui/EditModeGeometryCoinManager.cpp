@@ -140,7 +140,9 @@ void EditModeGeometryCoinManager::processGeometry(const GeoListFacade & geolistf
         editModeScenegraphNodes.PointsCoordinate,
         editModeScenegraphNodes.CurvesMaterials,
         editModeScenegraphNodes.CurvesCoordinate,
-        editModeScenegraphNodes.CurveSet
+        editModeScenegraphNodes.CurveSet,
+        editModeScenegraphNodes.NurbsCoordinate,
+        editModeScenegraphNodes.NurbsSet
     };
 
     // process geometry layers
@@ -525,7 +527,7 @@ void EditModeGeometryCoinManager::createEditModeInventorNodes()
         auto coords = new SoCoordinate3;
         editModeScenegraphNodes.CurvesCoordinate.push_back(coords);
         editModeScenegraphNodes.CurvesCoordinate[i]->setName(concat("CurvesCoordinate",i).c_str());
-        sep->addChild(editModeScenegraphNodes.CurvesCoordinate[i]);
+        // sep->addChild(editModeScenegraphNodes.CurvesCoordinate[i]);
 
         auto drawstyle = new SoDrawStyle;
         editModeScenegraphNodes.CurvesDrawStyle.push_back(drawstyle);
@@ -543,7 +545,17 @@ void EditModeGeometryCoinManager::createEditModeInventorNodes()
         auto solineset = new SoLineSet;
         editModeScenegraphNodes.CurveSet.push_back(solineset);
         editModeScenegraphNodes.CurveSet[i]->setName(concat("CurvesLineSet",i).c_str());
-        sep->addChild(editModeScenegraphNodes.CurveSet[i]);
+        // sep->addChild(editModeScenegraphNodes.CurveSet[i]);
+
+        auto nurbsCoords = new SoCoordinate4;
+        editModeScenegraphNodes.NurbsCoordinate.push_back(nurbsCoords);
+        editModeScenegraphNodes.NurbsCoordinate[i]->setName(concat("NurbsCoordinate",i).c_str());
+        sep->addChild(editModeScenegraphNodes.NurbsCoordinate[i]);
+
+        auto sonurbscurve = new SoNurbsCurve;
+        editModeScenegraphNodes.NurbsSet.push_back(sonurbscurve);
+        editModeScenegraphNodes.NurbsSet[i]->setName(concat("NurbsCurve",i).c_str());
+        sep->addChild(editModeScenegraphNodes.NurbsSet[i]);
 
         editModeScenegraphNodes.CurvesGroup->addChild(sep);
         sep->unref();

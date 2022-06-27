@@ -102,6 +102,7 @@ struct DrawingParameters {
     static SbColor FullyConstrainedColor;                       // Color for a fully constrained sketch
     static SbColor FullyConstraintInternalAlignmentColor;       // Color for fully constrained internal alignment geometry
     static SbColor InternalAlignedGeoColor;                     // Color for non-fully constrained internal alignment geometry
+    static SbColor BSplineKnotColor;                            // Color for B-Spline knots
     static SbColor FullyConstraintConstructionPointColor;       // Color for fully constrained construction points
     static SbColor VertexColor;                                 // Color for vertices
     static SbColor FullyConstraintElementColor;                 // Color for a fully constrained element

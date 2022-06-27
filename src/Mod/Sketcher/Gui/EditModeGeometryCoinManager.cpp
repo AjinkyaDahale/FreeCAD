@@ -182,6 +182,14 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
         return false;
     };
 
+    auto getInternalAlignedType = [&geolistfacade](int GeoId) {
+        auto geom = geolistfacade.getGeometryFacadeFromGeoId(GeoId);
+        if (geom) {
+            return geom->getInternalType();
+        }
+        return Sketcher::InternalType::None;
+    };
+
     auto isFullyConstraintElement = [&geolistfacade](int GeoId) {
         auto geom = geolistfacade.getGeometryFacadeFromGeoId(GeoId);
 
@@ -229,13 +237,10 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
 
                     bool constrainedElement = isFullyConstraintElement(GeoId);
 
-                    if(isInternalAlignedGeom(GeoId)) {
-                        if(constrainedElement)
-                            pcolor[i] = drawingParameters.FullyConstraintInternalAlignmentColor;
-                        else
-                            pcolor[i] = drawingParameters.InternalAlignedGeoColor;
-                    }
-                    else {
+                    auto internalType = getInternalAlignedType(GeoId);
+
+                    switch (internalType) {
+                    case Sketcher::InternalType::None: {
                         if(!isDefinedGeomPoint(GeoId)) {
                             if(constrainedElement)
                                 pcolor[i] = drawingParameters.FullyConstraintConstructionPointColor;
@@ -248,6 +253,18 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
                             else
                                 pcolor[i] = drawingParameters.CurveColor;
                         }
+                        break;
+                    }
+                    case Sketcher::InternalType::BSplineKnotPoint: {
+                        pcolor[i] = drawingParameters.BSplineKnotColor;
+                        break;
+                    }
+                    default: {
+                        if(constrainedElement)
+                            pcolor[i] = drawingParameters.FullyConstraintInternalAlignmentColor;
+                        else
+                            pcolor[i] = drawingParameters.InternalAlignedGeoColor;
+                    }
                     }
                 }
             }

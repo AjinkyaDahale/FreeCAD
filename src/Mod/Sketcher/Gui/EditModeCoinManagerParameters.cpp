@@ -39,6 +39,7 @@ SbColor DrawingParameters::InvalidSketchColor                       (1.0f,0.42f,
 SbColor DrawingParameters::FullyConstrainedColor                    (0.0f,1.0f,0.0f);     // #00FF00 -> (  0,255,  0)
 SbColor DrawingParameters::FullyConstraintInternalAlignmentColor    (0.87f,0.87f,0.78f);  // #DEDEC8 -> (222,222,200)
 SbColor DrawingParameters::InternalAlignedGeoColor                  (0.7f,0.7f,0.5f);     // #B2B27F -> (178,178,127)
+SbColor DrawingParameters::BSplineKnotColor                         (0.0f,1.0f,1.0f);     // #00FFFF -> (255,255,255)
 SbColor DrawingParameters::FullyConstraintConstructionPointColor    (1.0f,0.58f,0.50f);   // #FF9580 -> (255,149,128)
 SbColor DrawingParameters::VertexColor                              (1.0f,0.149f,0.0f);   // #FF2600 -> (255, 38,  0)
 SbColor DrawingParameters::FullyConstraintElementColor              (0.50f,0.81f,0.62f);  // #80D0A0 -> (128,208,160)

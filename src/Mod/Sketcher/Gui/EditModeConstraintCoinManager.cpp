@@ -1343,9 +1343,9 @@ void EditModeConstraintCoinManager::updateConstraintColor(const std::vector<Sket
                     case EllipseMinorDiameter:
                     case HyperbolaMajor:
                     case HyperbolaMinor:
+                    case ParabolaFocalAxis:
                     {
                         selectline(constraint->First);
-
                     }
                     break;
                     case EllipseFocus1:

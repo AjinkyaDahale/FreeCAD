@@ -213,6 +213,8 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
 
         int PtNum = editModeScenegraphNodes.PointsMaterials[l]->diffuseColor.getNum();
         SbColor *pcolor = editModeScenegraphNodes.PointsMaterials[l]->diffuseColor.startEditing();
+        editModeScenegraphNodes.PointSet[l]->markerIndex.setNum(PtNum);
+        auto pmarker = editModeScenegraphNodes.PointSet[l]->markerIndex.startEditing();
         int CurvNum = editModeScenegraphNodes.CurvesMaterials[l]->diffuseColor.getNum();
         SbColor *color = editModeScenegraphNodes.CurvesMaterials[l]->diffuseColor.startEditing();
 
@@ -229,6 +231,7 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
         else {
 
             for (int  i=0; i < PtNum; i++) {
+                pmarker[i] = Gui::Inventor::MarkerBitmaps::getMarkerIndex("CIRCLE_FILLED", drawingParameters.markerSize);
                 if ( !(i == 0 && l == 0) && ViewProviderSketchCoinAttorney::isSketchFullyConstrained(viewProvider)) {// root point is not coloured
                     pcolor[i] = drawingParameters.FullyConstrainedColor;
                 }
@@ -257,9 +260,11 @@ void EditModeGeometryCoinManager::updateGeometryColor(const GeoListFacade & geol
                     }
                     case Sketcher::InternalType::BSplineKnotPoint: {
                         pcolor[i] = drawingParameters.BSplineKnotColor;
+                        pmarker[i] = Gui::Inventor::MarkerBitmaps::getMarkerIndex("DIAMOND_FILLED", drawingParameters.markerSize);
                         break;
                     }
                     default: {
+                        pmarker[i] = Gui::Inventor::MarkerBitmaps::getMarkerIndex("SQUARE_FILLED", drawingParameters.markerSize);
                         if(constrainedElement)
                             pcolor[i] = drawingParameters.FullyConstraintInternalAlignmentColor;
                         else

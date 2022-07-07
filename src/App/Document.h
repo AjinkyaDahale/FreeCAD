@@ -29,6 +29,7 @@
 
 #include <map>
 #include <vector>
+#include <QString>
 
 namespace Base {
     class Writer;
@@ -172,6 +173,8 @@ public:
     boost::signals2::signal<void (const App::Document&, const std::vector<App::DocumentObject*>&)> signalSkipRecompute;
     boost::signals2::signal<void (const App::DocumentObject&)> signalFinishRestoreObject;
     boost::signals2::signal<void (const App::Document&,const App::Property&)> signalChangePropertyEditor;
+    // signal critical user message
+    boost::signals2::signal<void (const App::DocumentObject&, const QString &)> signalCriticalMessage;
     //@}
     boost::signals2::signal<void (std::string)> signalLinkXsetValue;
 

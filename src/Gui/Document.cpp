@@ -126,6 +126,7 @@ struct DocumentP
     Connection connectTouchedObject;
     Connection connectChangePropertyEditor;
     Connection connectChangeDocument;
+    Connection connectCriticalMessage;
 
     using ConnectionBlock = boost::signals2::shared_connection_block;
     ConnectionBlock connectActObjectBlocker;
@@ -211,6 +212,9 @@ Document::Document(App::Document* pcDocument,Application * app)
         (boost::bind(&Gui::Document::slotTransactionAppend, this, bp::_1, bp::_2));
     d->connectTransactionRemove = pcDocument->signalTransactionRemove.connect
         (boost::bind(&Gui::Document::slotTransactionRemove, this, bp::_1, bp::_2));
+
+    d->connectCriticalMessage = pcDocument->signalCriticalMessage.connect
+        (boost::bind(&Gui::Document::slotCriticalMessage, this, bp::_1, bp::_2));
     // pointer to the python class
     // NOTE: As this Python object doesn't get returned to the interpreter we
     // mustn't increment it (Werner Jan-12-2006)
@@ -253,6 +257,7 @@ Document::~Document()
     d->connectTouchedObject.disconnect();
     d->connectChangePropertyEditor.disconnect();
     d->connectChangeDocument.disconnect();
+    d->connectCriticalMessage.disconnect();
 
     // e.g. if document gets closed from within a Python command
     d->_isClosing = true;
@@ -1074,7 +1079,7 @@ static bool checkCanonicalPath(const std::map<App::Document*, bool> &docs)
                     << QObject::tr("Path:") << ' ' << QString::fromUtf8(doc->FileName.getValue());
                     for (auto d : v.second) {
                         if (d == doc) continue;
-                        ts << "\n" 
+                        ts << "\n"
                         << QObject::tr("Document:") << ' ' << docName(d)
                         << "\n  "
                         << QObject::tr("Path:") << ' ' << QString::fromUtf8(d->FileName.getValue());
@@ -1688,6 +1693,12 @@ void Document::slotFinishImportObjects(const std::vector<App::DocumentObject*> &
     //     auto vpd = dynamic_cast<ViewProviderDocumentObject*>(vp);
     //     if(vpd) vpd->finishRestoring();
     // }
+}
+
+void Document::slotCriticalMessage(const App::DocumentObject& obj, const QString & msg)
+{
+    (void) obj;
+    QMessageBox::critical(getActiveView(), QObject::tr("Critical Message"), msg);
 }
 
 

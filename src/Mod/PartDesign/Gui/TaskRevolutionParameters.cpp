@@ -60,11 +60,15 @@ TaskRevolutionParameters::TaskRevolutionParameters(PartDesignGui::ViewProvider* 
     if (pcFeat->isDerivedFrom(PartDesign::Revolution::getClassTypeId())) {
         PartDesign::Revolution* rev = static_cast<PartDesign::Revolution*>(vp->getObject());
         this->propAngle = &(rev->Angle);
+        this->propAngle2 = &(rev->Angle2);
         this->propMidPlane = &(rev->Midplane);
         this->propReferenceAxis = &(rev->ReferenceAxis);
         this->propReversed = &(rev->Reversed);
+        this->propUpToFace = &(rev->UpToFace);
         ui->revolveAngle->bind(rev->Angle);
-    } else {
+        ui->revolveAngle2->bind(rev->Angle2);
+    }
+    else {
         assert(pcFeat->isDerivedFrom(PartDesign::Groove::getClassTypeId()));
         PartDesign::Groove* rev = static_cast<PartDesign::Groove*>(vp->getObject());
         this->propAngle = &(rev->Angle);
@@ -74,18 +78,13 @@ TaskRevolutionParameters::TaskRevolutionParameters(PartDesignGui::ViewProvider* 
         ui->revolveAngle->bind(rev->Angle);
     }
 
-    ui->checkBoxMidplane->setChecked(propMidPlane->getValue());
-    ui->checkBoxReversed->setChecked(propReversed->getValue());
-
-    ui->revolveAngle->setValue(propAngle->getValue());
-    ui->revolveAngle->setMaximum(propAngle->getMaximum());
-    ui->revolveAngle->setMinimum(propAngle->getMinimum());
+    setupDialog();
 
     blockUpdate = false;
     updateUI();
     connectSignals();
 
-    setFocus ();
+    setFocus();
 
     //show the parts coordinate system axis for selection
     PartDesign::Body * body = PartDesign::Body::findBodyOf ( vp->getObject () );
@@ -99,6 +98,31 @@ TaskRevolutionParameters::TaskRevolutionParameters(PartDesignGui::ViewProvider* 
             ex.ReportException();
         }
      }
+}
+
+void TaskRevolutionParameters::setupDialog()
+{
+    PartDesign::ProfileBased* pcFeat = static_cast<PartDesign::ProfileBased*>(vp->getObject());
+    ui->checkBoxMidplane->setChecked(propMidPlane->getValue());
+    ui->checkBoxReversed->setChecked(propReversed->getValue());
+
+    ui->revolveAngle->setValue(propAngle->getValue());
+    ui->revolveAngle->setMaximum(propAngle->getMaximum());
+    ui->revolveAngle->setMinimum(propAngle->getMinimum());
+
+    int index = 0;
+
+    // TODO: This should also be implemented for groove
+    if (pcFeat->isDerivedFrom(PartDesign::Revolution::getClassTypeId())) {
+        PartDesign::Revolution* rev = static_cast<PartDesign::Revolution*>(vp->getObject());
+        ui->revolveAngle2->setValue(propAngle2->getValue());
+        ui->revolveAngle2->setMaximum(propAngle2->getMaximum());
+        ui->revolveAngle2->setMinimum(propAngle2->getMinimum());
+
+        index = rev->Type.getValue();
+    }
+
+    translateModeList(index);
 }
 
 void TaskRevolutionParameters::fillAxisCombo(bool forceRefill)
@@ -222,6 +246,18 @@ void TaskRevolutionParameters::onSelectionChanged(const Gui::SelectionChanges& m
             updateUI();
         }
     }
+}
+
+void TaskRevolutionParameters::translateModeList(int index)
+{
+    // Must correspond to values from PartDesign::Revolution::TypeEnums
+    ui->changeMode->clear();
+    ui->changeMode->addItem(tr("Dimension"));
+    // ui->changeMode->addItem(tr("To last"));
+    // ui->changeMode->addItem(tr("To first"));
+    ui->changeMode->addItem(tr("Up to face"));
+    ui->changeMode->addItem(tr("Two dimensions"));
+    ui->changeMode->setCurrentIndex(index);
 }
 
 
@@ -365,6 +401,9 @@ void TaskRevolutionParameters::changeEvent(QEvent *e)
     TaskBox::changeEvent(e);
     if (e->type() == QEvent::LanguageChange) {
         ui->retranslateUi(proxy);
+
+        // Translate mode items
+        translateModeList(ui->changeMode->currentIndex());
     }
 }
 

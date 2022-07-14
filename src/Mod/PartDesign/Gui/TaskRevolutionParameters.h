@@ -51,6 +51,15 @@ public:
 
     void apply() override;
 
+    enum class Modes {
+        Dimension,
+        ThroughAll,
+        ToLast = ThroughAll,
+        ToFirst,
+        ToFace,
+        TwoDimensions
+    };
+
     /**
      * @brief fillAxisCombo fills the combo and selects the item according to
      * current value of revolution object's axis reference.
@@ -75,17 +84,21 @@ protected:
     double getAngle() const;
     bool getMidplane() const;
     bool getReversed() const;
+    void setupDialog(void);
 
     //mirrors of revolution's or groove's properties
     //should have been done by inheriting revolution and groove from common class...
     App::PropertyAngle* propAngle;
+    App::PropertyAngle* propAngle2;
     App::PropertyBool* propReversed;
     App::PropertyBool* propMidPlane;
     App::PropertyLinkSub* propReferenceAxis;
+    App::PropertyLinkSub* propUpToFace;
 
 private:
     void connectSignals();
     void updateUI();
+    void translateModeList(int index);
 
 private:
     QWidget* proxy;

@@ -72,9 +72,13 @@ public:
 
 private Q_SLOTS:
     void onAngleChanged(double);
+    void onAngle2Changed(double);
     void onAxisChanged(int);
     void onMidplane(bool);
     void onReversed(bool);
+    void onModeChanged(int);
+    void onButtonFace(const bool pressed = true);
+    void onFaceName(const QString& text);
 
 protected:
     void onSelectionChanged(const Gui::SelectionChanges& msg) override;
@@ -84,6 +88,7 @@ protected:
     double getAngle() const;
     bool getMidplane() const;
     bool getReversed() const;
+    QString getFaceName() const;
     void setupDialog(void);
 
     //mirrors of revolution's or groove's properties
@@ -97,12 +102,16 @@ protected:
 
 private:
     void connectSignals();
-    void updateUI();
+    void updateUI(int index=0); // TODO: Implement for index and remove default
     void translateModeList(int index);
+    // TODO: This is common with extrude. Maybe send to superclass.
+    void translateFaceName();
+    void clearFaceName();
 
 private:
     QWidget* proxy;
     std::unique_ptr<Ui_TaskRevolutionParameters> ui;
+    bool selectionFace;
 
     /**
      * @brief axesInList is the list of links corresponding to axis combo; must

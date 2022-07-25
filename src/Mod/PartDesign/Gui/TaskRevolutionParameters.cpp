@@ -48,6 +48,7 @@ using namespace Gui;
 TaskRevolutionParameters::TaskRevolutionParameters(PartDesignGui::ViewProvider* RevolutionView, QWidget *parent)
     : TaskSketchBasedParameters(RevolutionView, parent, "PartDesign_Revolution", tr("Revolution parameters"))
     , ui(new Ui_TaskRevolutionParameters)
+    , isGroove(false)
 {
     // we need a separate container widget to add all controls to
     proxy = new QWidget(this);
@@ -70,12 +71,16 @@ TaskRevolutionParameters::TaskRevolutionParameters(PartDesignGui::ViewProvider* 
     }
     else {
         assert(pcFeat->isDerivedFrom(PartDesign::Groove::getClassTypeId()));
+        isGroove = true;
         PartDesign::Groove* rev = static_cast<PartDesign::Groove*>(vp->getObject());
         this->propAngle = &(rev->Angle);
+        this->propAngle2 = &(rev->Angle2);
         this->propMidPlane = &(rev->Midplane);
         this->propReferenceAxis = &(rev->ReferenceAxis);
         this->propReversed = &(rev->Reversed);
+        this->propUpToFace = &(rev->UpToFace);
         ui->revolveAngle->bind(rev->Angle);
+        ui->revolveAngle2->bind(rev->Angle2);
     }
 
     setupDialog();
@@ -102,7 +107,6 @@ TaskRevolutionParameters::TaskRevolutionParameters(PartDesignGui::ViewProvider* 
 
 void TaskRevolutionParameters::setupDialog()
 {
-    PartDesign::ProfileBased* pcFeat = static_cast<PartDesign::ProfileBased*>(vp->getObject());
     ui->checkBoxMidplane->setChecked(propMidPlane->getValue());
     ui->checkBoxReversed->setChecked(propReversed->getValue());
 
@@ -113,8 +117,16 @@ void TaskRevolutionParameters::setupDialog()
     int index = 0;
 
     // TODO: This should also be implemented for groove
-    if (pcFeat->isDerivedFrom(PartDesign::Revolution::getClassTypeId())) {
+    if (!isGroove) {
         PartDesign::Revolution* rev = static_cast<PartDesign::Revolution*>(vp->getObject());
+        ui->revolveAngle2->setValue(propAngle2->getValue());
+        ui->revolveAngle2->setMaximum(propAngle2->getMaximum());
+        ui->revolveAngle2->setMinimum(propAngle2->getMinimum());
+
+        index = rev->Type.getValue();
+    }
+    else {
+        PartDesign::Groove* rev = static_cast<PartDesign::Groove*>(vp->getObject());
         ui->revolveAngle2->setValue(propAngle2->getValue());
         ui->revolveAngle2->setMaximum(propAngle2->getMaximum());
         ui->revolveAngle2->setMinimum(propAngle2->getMinimum());
@@ -129,7 +141,12 @@ void TaskRevolutionParameters::translateModeList(int index)
 {
     ui->changeMode->clear();
     ui->changeMode->addItem(tr("Dimension"));
-    ui->changeMode->addItem(tr("To last"));
+    if (!isGroove) {
+        ui->changeMode->addItem(tr("To last"));
+    }
+    else {
+        ui->changeMode->addItem(tr("Through all"));
+    }
     ui->changeMode->addItem(tr("To first"));
     ui->changeMode->addItem(tr("Up to face"));
     ui->changeMode->addItem(tr("Two dimensions"));
@@ -453,26 +470,33 @@ void TaskRevolutionParameters::onReversed(bool on)
 
 void TaskRevolutionParameters::onModeChanged(int index)
 {
-    PartDesign::Revolution* pcRevolution = static_cast<PartDesign::Revolution*>(vp->getObject());
+    App::PropertyEnumeration* pcType;
+    if (!isGroove)
+        pcType = &(static_cast<PartDesign::Revolution*>(vp->getObject())->Type);
+    else
+        pcType = &(static_cast<PartDesign::Groove*>(vp->getObject())->Type);
 
     switch (static_cast<PartDesign::Revolution::RevolMethod>(index)) {
     case PartDesign::Revolution::RevolMethod::Dimension:
-        pcRevolution->Type.setValue("Angle");
+        pcType->setValue("Angle");
         // Avoid error message
         // if (ui->revolveAngle->value() < Base::Quantity(Precision::Angular(), Base::Unit::Angle)) // TODO: Ensure radians/degree consistency
         //     ui->revolveAngle->setValue(5.0);
         break;
     case PartDesign::Revolution::RevolMethod::ToLast:
-        pcRevolution->Type.setValue("UpToLast");
+        if (!isGroove)
+        pcType->setValue("UpToLast");
+        else
+            pcType->setValue("ThroughAll");
         break;
     case PartDesign::Revolution::RevolMethod::ToFirst:
-        pcRevolution->Type.setValue("UpToFirst");
+        pcType->setValue("UpToFirst");
         break;
     case PartDesign::Revolution::RevolMethod::ToFace:
-        pcRevolution->Type.setValue("UpToFace");
+        pcType->setValue("UpToFace");
         break;
     case PartDesign::Revolution::RevolMethod::TwoDimensions:
-        pcRevolution->Type.setValue("TwoAngles");
+        pcType->setValue("TwoAngles");
         break;
     }
 

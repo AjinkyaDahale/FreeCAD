@@ -2571,12 +2571,12 @@ void CmdSketcherConstrainPointOnObject::activated(int iMsg)
 
                 const Part::Geometry *geom = Obj->getGeometry(curves[iCrv].GeoId);
 
-                if( geom && geom->getTypeId() == Part::GeomBSplineCurve::getClassTypeId() ){
-                    // unsupported until normal to B-spline at any point implemented.
-                    QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
-                                         QObject::tr("Point on B-spline edge currently unsupported."));
-                    continue;
-                }
+                // if( geom && geom->getTypeId() == Part::GeomBSplineCurve::getClassTypeId() ){
+                //     // unsupported until normal to B-spline at any point implemented.
+                //     QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
+                //                          QObject::tr("Point on B-spline edge currently unsupported."));
+                //     continue;
+                // }
 
                 if( geom && isBsplinePole(geom)) {
                     QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
@@ -2658,14 +2658,14 @@ void CmdSketcherConstrainPointOnObject::applyConstraint(std::vector<SelIdPair> &
 
     const Part::Geometry *geom = Obj->getGeometry(GeoIdCrv);
 
-    if( geom && geom->getTypeId() == Part::GeomBSplineCurve::getClassTypeId() ){
-        // unsupported until normal to B-spline at any point implemented.
-        QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
-                             QObject::tr("Point on B-spline edge currently unsupported."));
-        abortCommand();
+    // if( geom && geom->getTypeId() == Part::GeomBSplineCurve::getClassTypeId() ){
+    //     // unsupported until normal to B-spline at any point implemented.
+    //     QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),
+    //                          QObject::tr("Point on B-spline edge currently unsupported."));
+    //     abortCommand();
 
-        return;
-    }
+    //     return;
+    // }
 
     if( geom && isBsplinePole(geom)) {
         QMessageBox::warning(Gui::getMainWindow(), QObject::tr("Wrong selection"),

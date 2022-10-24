@@ -334,6 +334,282 @@ double ConstraintPointOnBSpline::grad(double *gcsparam)
     return scale * deriv;
 }
 
+// Tangent to B-spline
+ConstraintTangentToBSpline::ConstraintTangentToBSpline(BSpline& b, Line& l, double* initparam)
+    : bsp(b)
+{
+    // This is always going to be true
+    numpoles = b.degree + 1;
+
+    pvec.reserve(3*numpoles + 5);
+
+    // The startpole logic is repeated in a lot of places,
+    // for example in GCS and slope at knot
+    // find relevant poles
+    startpole = 0;
+    // TODO: Adjust for periodic knot
+    for (size_t j = 1; j < b.mult.size() && *(b.knots[j]) <= *initparam; ++j)
+        startpole += b.mult[j];
+    if (!b.periodic && startpole >= b.poles.size())
+        startpole = b.poles.size() - 1;
+    for (size_t i = 0; i < numpoles; ++i)
+        pvec.push_back(b.poles[(startpole + i) % b.poles.size()].x);
+    for (size_t i = 0; i < numpoles; ++i)
+        pvec.push_back(b.poles[(startpole + i) % b.poles.size()].y);
+    for (size_t i = 0; i < numpoles; ++i)
+        pvec.push_back(b.weights[(startpole + i) % b.weights.size()]);
+
+    pvec.push_back(initparam);
+    pvec.push_back(l.p1.x);
+    pvec.push_back(l.p1.y);
+    pvec.push_back(l.p2.x);
+    pvec.push_back(l.p2.y);
+
+    factors.resize(numpoles);
+    if (b.flattenedknots.empty())
+        b.setupFlattenedKnots();
+
+    origpvec = pvec;
+    rescale();
+}
+
+ConstraintType ConstraintTangentToBSpline::getTypeId()
+{
+    return TangentBSpline;
+}
+
+void ConstraintTangentToBSpline::rescale(double coef)
+{
+    scale = coef * 1.0;
+}
+
+double ConstraintTangentToBSpline::error()
+{
+    double xsum = 0., xslopesum = 0.;
+    double ysum = 0., yslopesum = 0.;
+    double wsum = 0., wslopesum = 0.;
+
+    // get the point values at params
+    {
+        // TODO: maybe make it global so it doesn't have to be created everytime
+        VEC_D d(numpoles);
+        for (size_t i = 0; i < numpoles; ++i)
+            d[i] = *weightat(i);
+        wsum = BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree, d, bsp.flattenedknots);
+
+        for (size_t i = 0; i < numpoles; ++i)
+            d[i] = *polexat(i) * *weightat(i);
+        xsum = BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree, d, bsp.flattenedknots);
+
+        for (size_t i = 0; i < numpoles; ++i)
+            d[i] = *poleyat(i) * *weightat(i);
+        ysum = BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree, d, bsp.flattenedknots);
+    }
+
+    // get the slope values at params
+    {
+        VEC_D d(numpoles - 1);
+        for (size_t i = 1; i < numpoles; ++i) {
+            d[i-1] =
+                (*weightat(i) - *weightat(i-1)) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        wslopesum = bsp.degree *
+            BSpline::splineValue(*theparam(), startpole + bsp.degree,
+                                 bsp.degree-1, d, bsp.flattenedknots);
+
+        for (size_t i = 1; i < numpoles; ++i) {
+            d[i-1] =
+                (*polexat(i) * *weightat(i) - *polexat(i-1) * *weightat(i-1)) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        xslopesum = bsp.degree *
+            BSpline::splineValue(*theparam(), startpole + bsp.degree,
+                                 bsp.degree-1, d, bsp.flattenedknots);
+
+        for (size_t i = 1; i < numpoles; ++i) {
+            d[i-1] =
+                (*poleyat(i) * *weightat(i) - *poleyat(i-1) * *weightat(i-1)) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        yslopesum = bsp.degree *
+            BSpline::splineValue(*theparam(), startpole + bsp.degree,
+                                 bsp.degree-1, d, bsp.flattenedknots);
+    }
+
+    // This is actually wsum^2 * the respective slopes
+    double slopex = wsum*xslopesum - wslopesum*xsum;
+    double slopey = wsum*yslopesum - wslopesum*ysum;
+    double linex = *linep2x() - *linep1x();
+    double liney = *linep2y() - *linep1y();
+
+    // error is the cross product
+    return scale * (slopex*liney - slopey*linex);
+}
+
+double ConstraintTangentToBSpline::grad(double *param)
+{
+    double result = 0.0;
+    double linex = *linep2x() - *linep1x();
+    double liney = *linep2y() - *linep1y();
+    double xsum = 0., xslopesum = 0.;
+    double ysum = 0., yslopesum = 0.;
+    double wsum = 0., wslopesum = 0.;
+
+    // get the point values at params
+    // TODO: Maybe only do this if needed?
+    {
+        // TODO: maybe make it global so it doesn't have to be created everytime
+        VEC_D d(numpoles);
+        for (size_t i = 0; i < numpoles; ++i)
+            d[i] = *weightat(i);
+        wsum = BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree, d, bsp.flattenedknots);
+
+        for (size_t i = 0; i < numpoles; ++i)
+            d[i] = *polexat(i) * *weightat(i);
+        xsum = BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree, d, bsp.flattenedknots);
+
+        for (size_t i = 0; i < numpoles; ++i)
+            d[i] = *poleyat(i) * *weightat(i);
+        ysum = BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree, d, bsp.flattenedknots);
+    }
+
+    // get the slope values at params
+    // TODO: Maybe only do this if needed?
+    {
+        VEC_D d(numpoles - 1);
+        for (size_t i = 1; i < numpoles; ++i) {
+            d[i-1] =
+                (*weightat(i) - *weightat(i-1)) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        wslopesum = bsp.degree *
+            BSpline::splineValue(*theparam(), startpole + bsp.degree,
+                                 bsp.degree-1, d, bsp.flattenedknots);
+
+        for (size_t i = 1; i < numpoles; ++i) {
+            d[i-1] =
+                (*polexat(i) * *weightat(i) - *polexat(i-1) * *weightat(i-1)) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        xslopesum = bsp.degree *
+            BSpline::splineValue(*theparam(), startpole + bsp.degree,
+                                 bsp.degree-1, d, bsp.flattenedknots);
+
+        for (size_t i = 1; i < numpoles; ++i) {
+            d[i-1] =
+                (*poleyat(i) * *weightat(i) - *poleyat(i-1) * *weightat(i-1)) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        yslopesum = bsp.degree *
+            BSpline::splineValue(*theparam(), startpole + bsp.degree,
+                                 bsp.degree-1, d, bsp.flattenedknots);
+    }
+
+    for (size_t i = 0; i < numpoles; ++i) {
+        if (param == polexat(i)) {
+            double factor = bsp.getLinCombFactor(
+                *theparam(), startpole + bsp.degree, startpole + i);
+            VEC_D sd(numpoles-1);
+            if (i > 0)
+                sd[i-1] =
+                    1.0 / (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+            if (i < numpoles - 1)
+                sd[i] = -1.0 / (bsp.flattenedknots[startpole+i+1+bsp.degree] - bsp.flattenedknots[startpole+i+1]);
+            double slopefactor = BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree-1, sd, bsp.flattenedknots);
+            result += *weightat(i) * (wsum*slopefactor - wslopesum*factor) * liney;
+        }
+        if (param == poleyat(i)) {
+            double factor = bsp.getLinCombFactor(
+                *theparam(), startpole + bsp.degree, startpole + i);
+            VEC_D sd(numpoles-1);
+            if (i > 0)
+                sd[i-1] =
+                    1.0 / (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+            if (i < numpoles - 1)
+                sd[i] = -1.0 / (bsp.flattenedknots[startpole+i+1+bsp.degree] - bsp.flattenedknots[startpole+i+1]);
+            double slopefactor = BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree-1, sd, bsp.flattenedknots);
+            result -= *weightat(i) * (wsum*slopefactor - wslopesum*factor) * linex;
+        }
+        if (param == weightat(i)) {
+            double factor = bsp.getLinCombFactor(
+                *theparam(), startpole + bsp.degree, startpole + i);
+            VEC_D sd(numpoles-1);
+            if (i > 0)
+                sd[i-1] =
+                    1.0 / (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+            if (i < numpoles - 1)
+                sd[i] = -1.0 / (bsp.flattenedknots[startpole+i+1+bsp.degree] - bsp.flattenedknots[startpole+i+1]);
+            double slopefactor = BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree-1, sd, bsp.flattenedknots);
+            double drxdwi = bsp.degree *
+                (factor * (xslopesum - wslopesum*(*polexat(i))) -
+                 slopefactor * (xsum - wsum*(*polexat(i))));
+            double drydwi = bsp.degree *
+                (factor * (yslopesum - wslopesum*(*poleyat(i))) -
+                 slopefactor * (ysum - wsum*(*poleyat(i))));
+            result += drxdwi*liney - drydwi*linex;
+        }
+    }
+
+    if (param == theparam()) {
+        VEC_D sd(numpoles-1), ssd(numpoles-2);
+        for (size_t i = 1; i < numpoles; ++i) {
+            sd[i-1] =
+                (*weightat(i) - *weightat(i-1)) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        for (size_t i = 1; i < numpoles-1; ++i) {
+            ssd[i-1] =
+                (sd[i] - sd[i-1]) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        double wslopeslopesum = bsp.degree * (bsp.degree - 1) *
+            BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree-2, ssd, bsp.flattenedknots);
+
+        for (size_t i = 1; i < numpoles; ++i) {
+            sd[i-1] =
+                (*polexat(i) * *weightat(i) - *polexat(i-1) * *weightat(i-1)) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        for (size_t i = 1; i < numpoles-1; ++i) {
+            ssd[i-1] =
+                (sd[i] - sd[i-1]) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        double xslopeslopesum = bsp.degree * (bsp.degree - 1) *
+            BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree-2, ssd, bsp.flattenedknots);
+
+        for (size_t i = 1; i < numpoles; ++i) {
+            sd[i-1] =
+                (*poleyat(i) * *weightat(i) - *poleyat(i-1) * *weightat(i-1)) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        for (size_t i = 1; i < numpoles-1; ++i) {
+            ssd[i-1] =
+                (sd[i] - sd[i-1]) /
+                (bsp.flattenedknots[startpole+i+bsp.degree] - bsp.flattenedknots[startpole+i]);
+        }
+        double yslopeslopesum = bsp.degree * (bsp.degree - 1) *
+            BSpline::splineValue(*theparam(), startpole + bsp.degree, bsp.degree-2, ssd, bsp.flattenedknots);
+
+        double drxdu = wsum*xslopeslopesum - wslopeslopesum*xsum;
+        double drydu = wsum*yslopeslopesum - wslopeslopesum*ysum;
+
+        result += drxdu*liney - drydu*linex;
+    }
+
+    if (param == linep1x())
+        result += wsum*yslopesum - wslopesum*ysum;
+    if (param == linep1x())
+        result -= wsum*yslopesum - wslopesum*ysum;
+    if (param == linep1x())
+        result -= wsum*xslopesum - wslopesum*xsum;
+    if (param == linep1x())
+        result += wsum*xslopesum - wslopesum*xsum;
+
+    return scale * result;
+}
+
 // Center of Gravity
 
 const std::vector< std::vector<double> > ConstraintCenterOfGravity::defaultweights =
@@ -347,7 +623,6 @@ const std::vector< std::vector<double> > ConstraintCenterOfGravity::defaultweigh
  {0.0001984126984126984, 0.023809523809523815, 0.2363095238095238, 0.4793650793650793, 0.2363095238095238, 0.02380952380952381, 0.0001984126984126984},
  {2.48015873015873e-05, 0.006125992063492064, 0.10647321428571428, 0.3873759920634921, 0.38737599206349216, 0.10647321428571431, 0.006125992063492064, 2.48015873015873e-05},
  {2.7557319223985893e-06, 0.0013833774250440916, 0.04025573192239859, 0.24314925044091712, 0.43041776895943573, 0.24314925044091715, 0.04025573192239859, 0.0013833774250440916, 2.7557319223985905e-06}};
-
 
 ConstraintCenterOfGravity::ConstraintCenterOfGravity(const std::vector<double *>& givenpvec)
 {

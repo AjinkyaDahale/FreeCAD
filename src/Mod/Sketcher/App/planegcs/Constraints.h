@@ -72,7 +72,8 @@ namespace GCS
         CenterOfGravity = 26,
         WeightedLinearCombination = 27,
         SlopeAtBSplineKnot = 28,
-        PointOnBSpline = 29
+        PointOnBSpline = 29,
+        TangentBSpline = 30
     };
 
     enum InternalAlignmentType {
@@ -221,6 +222,34 @@ namespace GCS
         void setupInputs();
         std::vector<double> factors;
         size_t numpoints;
+        BSpline& bsp;
+        int startpole;
+    };
+
+    // Tangent To BSpline
+    class ConstraintTangentToBSpline : public Constraint
+    {
+    private:
+        inline double* polexat(size_t i) { return pvec[i]; }
+        inline double* poleyat(size_t i) { return pvec[numpoles + i]; }
+        inline double* weightat(size_t i) { return pvec[2*numpoles + i]; }
+        // TODO: better name because param has a different meaning here?
+        inline double* theparam() { return pvec[3*numpoles]; }
+        inline double* linep1x() { return pvec[3*numpoles + 1]; }
+        inline double* linep1y() { return pvec[3*numpoles + 2]; }
+        inline double* linep2x() { return pvec[3*numpoles + 3]; }
+        inline double* linep2y() { return pvec[3*numpoles + 4]; }
+    public:
+        /// TODO: Explain how it's provided
+        ConstraintTangentToBSpline(BSpline& b, Line& l, double* initparam);
+        ConstraintType getTypeId() override;
+        void rescale(double coef=1.) override;
+        double error() override;
+        double grad(double *) override;
+    private:
+        void setupInputs();
+        std::vector<double> factors;
+        size_t numpoles;
         BSpline& bsp;
         int startpole;
     };

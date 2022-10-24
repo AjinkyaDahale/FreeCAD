@@ -820,6 +820,14 @@ int System::addConstraintTangentAtBSplineKnot(BSpline &b, Line &l, size_t knotin
     return addConstraint(constr);
 }
 
+int System::addConstraintTangentBSpline(BSpline &b, Line &l, double* pointparam, int tagId, bool driving)
+{
+    Constraint *constr = new ConstraintTangentToBSpline(b, l, pointparam);
+    constr->setTag(tagId);
+    constr->setDriving(driving);
+    return addConstraint(constr);
+}
+
 // derived constraints
 
 int System::addConstraintP2PCoincident(Point &p1, Point &p2, int tagId, bool driving)

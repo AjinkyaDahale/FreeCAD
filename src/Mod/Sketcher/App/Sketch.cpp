@@ -2485,8 +2485,24 @@ int Sketch::addAngleAtPointConstraint(
             else {
                 knotindex = (pos1 == PointPos::start) ? 0 : (b.knots.size() - 1);
             }
-            if (knotindex >= b.knots.size())
-                return -1;
+
+            if (knotindex >= b.knots.size()) {
+                if (avp) {
+                    GCS::Point &p3 = Points[getPointId(geoId3, pos3)];
+                    auto partBsp = static_cast<GeomBSplineCurve*>(Geoms[geoId1].geo);
+                    double uNear;
+                    partBsp->closestParameter(Base::Vector3d(*p3.x, *p3.y, 0.0), uNear);
+                    double* pointparam = new double(uNear);
+                    Parameters.push_back(pointparam);
+                    int tag = addPointOnObjectConstraint(geoId3, pos3, geoId1, pointparam, driving); //increases ConstraintsCounter
+                    --ConstraintsCounter;
+                    tag = addPointOnObjectConstraint(geoId3, pos3, geoId2, driving); //increases ConstraintsCounter
+                    GCSsys.addConstraintTangentBSpline(b, l, pointparam, tag, driving);
+                    return ConstraintsCounter;
+                }
+                else
+                    return -1;
+            }
 
             if (b.mult[knotindex] >= b.degree) {
                 // Leave handling of start/end of non-periodic B-splines to legacy code

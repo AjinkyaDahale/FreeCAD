@@ -1727,6 +1727,25 @@ int Sketch::addConstraint(const Constraint *constraint)
             rtn = addTangentConstraint(constraint->First,constraint->Second);
         }
         else {
+            // check for B-Spline Knot to curve tangency
+            if(constraint->Third == GeoEnum::GeoUndef && constraint->SecondPos == PointPos::none && constraint->FirstPos == PointPos::start) {
+                auto knotgeoId = checkGeoId(constraint->First);
+                if (Geoms[knotgeoId].type == Point) {
+                    auto *point = static_cast<const GeomPoint*>(Geoms[knotgeoId].geo);
+                    auto isknot = GeometryFacade::isInternalType(point,InternalType::BSplineKnotPoint);
+
+                    if(isknot) {
+                        auto bsplinegeoid = internalAlignmentGeometryMap.at(constraint->First);
+
+                        bsplinegeoid = checkGeoId(bsplinegeoid);
+
+                        auto linegeoid = checkGeoId(constraint->Second);
+
+                        return addTangentLineAtBSplineKnotConstraint(linegeoid, bsplinegeoid, knotgeoId);
+                    }
+                }
+            }
+
             //any other point-wise tangency (endpoint-to-curve, endpoint-to-endpoint, tangent-via-point)
             c.value = new double(constraint->getValue());
             if(c.driving)
@@ -2434,6 +2453,35 @@ int Sketch::addTangentConstraint(int geoId1, int geoId2)
 
     return -1;
 }
+
+int Sketch::addTangentLineAtBSplineKnotConstraint(int checkedlinegeoId, int checkedbsplinegeoId, int checkedknotgeoid)
+{
+    GCS::BSpline &b = BSplines[Geoms[checkedbsplinegeoId].index];
+    GCS::Line &l = Lines[Geoms[checkedlinegeoId].index];
+
+    size_t knotindex = b.knots.size();
+
+    auto knotIt = std::find(b.knotpointGeoids.begin(),
+                    b.knotpointGeoids.end(), checkedknotgeoid);
+
+    knotindex = std::distance(b.knotpointGeoids.begin(), knotIt);
+
+    if (knotindex >= b.knots.size()){
+        Base::Console().Error("addConstraint: Knot index out-of-range!\n");
+        return -1;
+    }
+
+    if (b.mult[knotindex] >= b.degree && (b.periodic || (knotindex > 0 && knotindex < (b.knots.size()-1)))) {
+        Base::Console().Error("addTangentLineAtBSplineKnotConstraint: cannot set constraint when B-spline slope is discontinuous at knot!\n");
+        return -1;
+    }
+    else {
+        int tag = Sketch::addPointOnObjectConstraint(checkedknotgeoid, PointPos::start, checkedlinegeoId);//increases ConstraintsCounter
+        GCSsys.addConstraintTangentAtBSplineKnot(b, l, knotindex, tag);
+        return ConstraintsCounter;
+    }
+}
+
 
 //This function handles any type of tangent, perpendicular and angle
 // constraint that involves a point.

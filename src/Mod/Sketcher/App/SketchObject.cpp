@@ -7181,7 +7181,7 @@ bool SketchObject::insertBSplineKnot(int GeoId, double param, int multiplicity)
     // sketchobject managed operation.
     Base::StateLocker lock(managedoperation, true);
 
-    // handling unacceptable cases
+    // Input validation
     if (GeoId < 0 || GeoId > getHighestCurveIndex()) {
         THROWMT(
             Base::ValueError,
@@ -7193,19 +7193,17 @@ bool SketchObject::insertBSplineKnot(int GeoId, double param, int multiplicity)
                 QT_TRANSLATE_NOOP("Exceptions", "Knot cannot have zero multiplicity."));
     }
 
-    const Part::Geometry* geo = getGeometry(GeoId);
-
+    const auto* const geo{getGeometry(GeoId)};
     if (!geo->is<Part::GeomBSplineCurve>()) {
         THROWMT(Base::TypeError,
                 QT_TRANSLATE_NOOP("Exceptions",
                                   "The Geometry Index (GeoId) provided is not a B-spline."));
     }
 
-    const auto* bsp = static_cast<const Part::GeomBSplineCurve*>(geo);
-
-    int degree = bsp->getDegree();
-    double firstParam = bsp->getFirstParameter();
-    double lastParam = bsp->getLastParameter();
+    const auto* const bsp{static_cast<const Part::GeomBSplineCurve*>(geo)};
+    const int degree{bsp->getDegree()};
+    const double firstParam{bsp->getFirstParameter()};
+    const double lastParam{bsp->getLastParameter()};
 
     if (multiplicity > degree) {
         THROWMT(Base::ValueError,
@@ -7220,12 +7218,10 @@ bool SketchObject::insertBSplineKnot(int GeoId, double param, int multiplicity)
                                   "Knot cannot be inserted outside the B-spline parameter range."));
     }
 
-    std::unique_ptr<Part::GeomBSplineCurve> bspline;
-
-    // run the command
+    // Clone the B-spline and insert the knot
+    std::unique_ptr<Part::GeomBSplineCurve> bspline{};
     try {
         bspline.reset(static_cast<Part::GeomBSplineCurve*>(bsp->clone()));
-
         bspline->insertKnot(param, multiplicity);
     }
     catch (const Base::Exception& e) {
@@ -7233,70 +7229,65 @@ bool SketchObject::insertBSplineKnot(int GeoId, double param, int multiplicity)
         return false;
     }
 
-    // once command is run update the internal geometries
-    std::vector<int> delGeoId;
+    // Update the internal geometries, map poles and knots
+    auto findIndex = [](const auto& container, const auto& value) -> std::optional<int> {
+        if (auto it = std::find(container.begin(), container.end(), value); it != container.end()) {
+            return std::distance(container.begin(), it);
+        }
+        return std::nullopt;
+    };
 
-    std::vector<Base::Vector3d> poles = bsp->getPoles();
-    std::vector<Base::Vector3d> newPoles = bspline->getPoles();
-    std::vector<int> poleIndexInNew(poles.size(), -1);
+    const auto& poles{bsp->getPoles()};
+    const auto& newPoles{bspline->getPoles()};
+    std::vector<std::optional<int>> poleIndexInNew{std::size(poles)};
+    std::transform(poles.begin(), poles.end(), poleIndexInNew.begin(),
+                   [&newPoles, &findIndex](const auto& pole) { return findIndex(newPoles, pole); });
 
-    for (size_t j = 0; j < poles.size(); j++) {
-        const auto it = std::find(newPoles.begin(), newPoles.end(), poles[j]);
-        poleIndexInNew[j] = it - newPoles.begin();
-    }
-    std::replace(poleIndexInNew.begin(), poleIndexInNew.end(), int(newPoles.size()), -1);
+    const auto& knots{bsp->getKnots()};
+    const auto& newKnots{bspline->getKnots()};
+    std::vector<std::optional<int>> knotIndexInNew{std::size(knots)};
+    std::transform(knots.begin(), knots.end(), knotIndexInNew.begin(),
+                   [&newKnots, &findIndex](auto knot) { return findIndex(newKnots, knot); });
 
-    std::vector<double> knots = bsp->getKnots();
-    std::vector<double> newKnots = bspline->getKnots();
-    std::vector<int> knotIndexInNew(knots.size(), -1);
+    // Handle constraints
+    std::vector<int> geometryIdsToDelete{};
+    const auto& cvals{Constraints.getValues()};
+    std::vector<Sketcher::Constraint*> newcVals{};
 
-    for (size_t j = 0; j < knots.size(); j++) {
-        const auto it = std::find(newKnots.begin(), newKnots.end(), knots[j]);
-        knotIndexInNew[j] = it - newKnots.begin();
-    }
-    std::replace(knotIndexInNew.begin(), knotIndexInNew.end(), int(newKnots.size()), -1);
-
-    const std::vector<Sketcher::Constraint*>& cvals = Constraints.getValues();
-
-    std::vector<Constraint*> newcVals(0);
-
-    // modify pole and knot constraints
     for (const auto& constr : cvals) {
         if (!(constr->Type == Sketcher::InternalAlignment && constr->Second == GeoId)) {
-            newcVals.push_back(constr);
+            newcVals.emplace_back(constr);
             continue;
         }
 
-        std::vector<int>* indexInNew = nullptr;
+        const std::vector<std::optional<int>>* indexInNew{nullptr};
+        switch (constr->AlignmentType) {
+            case Sketcher::BSplineControlPoint:
+                indexInNew = &poleIndexInNew;
+                break;
+            case Sketcher::BSplineKnotPoint:
+                indexInNew = &knotIndexInNew;
+                break;
+            default:
+                // It is a bspline geometry, but not a control point or knot
+                newcVals.emplace_back(constr);
+                continue;
+        }
 
-        if (constr->AlignmentType == Sketcher::BSplineControlPoint) {
-            indexInNew = &poleIndexInNew;
-        }
-        else if (constr->AlignmentType == Sketcher::BSplineKnotPoint) {
-            indexInNew = &knotIndexInNew;
-        }
-        else {
-            // it is a bspline geometry, but not a controlpoint or knot
-            newcVals.push_back(constr);
-            continue;
-        }
-
-        if (indexInNew && indexInNew->at(constr->InternalAlignmentIndex) == -1) {
-            // it is an internal alignment geometry that is no longer valid
+        if (!indexInNew->at(constr->InternalAlignmentIndex).has_value()) {
+            // It is an internal alignment geometry that is no longer valid
             // => delete it and the pole circle
-            delGeoId.push_back(constr->First);
+            geometryIdsToDelete.emplace_back(constr->First);
             continue;
         }
 
-        Constraint* newConstr = constr->clone();
-        newConstr->InternalAlignmentIndex = indexInNew->at(constr->InternalAlignmentIndex);
-        newcVals.push_back(newConstr);
+        auto* newConstr{constr->clone()};
+        newConstr->InternalAlignmentIndex = indexInNew->at(constr->InternalAlignmentIndex).value();
+        newcVals.emplace_back(newConstr);
     }
 
-    const std::vector<Part::Geometry*>& vals = getInternalGeometry();
-
-    std::vector<Part::Geometry*> newVals(vals);
-
+    // Update geometry
+    std::vector<Part::Geometry*> newVals{getInternalGeometry()};
     GeometryFacade::copyId(geo, bspline.get());
     newVals[GeoId] = bspline.release();
 
@@ -7304,14 +7295,13 @@ bool SketchObject::insertBSplineKnot(int GeoId, double param, int multiplicity)
     {
         Base::StateLocker lock(internaltransaction, true);
         Geometry.setValues(std::move(newVals));
-
-        this->Constraints.setValues(std::move(newcVals));
+        Constraints.setValues(std::move(newcVals));
     }
 
     // Trigger update now
     // Update geometry indices and rebuild vertexindex now via onChanged, so that
     // ViewProvider::UpdateData is triggered.
-    if (!delGeoId.empty()) {
+    if (!geometryIdsToDelete.empty()) {
         // NOTE: There have been a couple of instances when knot insertion has
         // led to a segmentation fault: see
         // https://forum.freecad.org/viewtopic.php?f=19&t=64962&sid=10272db50a635c633260517b14ecad37.
@@ -7320,12 +7310,11 @@ bool SketchObject::insertBSplineKnot(int GeoId, double param, int multiplicity)
         // in constraint GUI features during an intermediate step.
         // See 247a9f0876a00e08c25b07d1f8802479d8623e87 for suggestions.
         // Geometry.touch();
-        delGeometriesExclusiveList(delGeoId);
+        delGeometriesExclusiveList(geometryIdsToDelete);
         return true;
     }
 
     Geometry.touch();
-
     return true;
 }
 

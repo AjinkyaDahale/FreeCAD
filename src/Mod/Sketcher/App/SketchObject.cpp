@@ -7193,7 +7193,7 @@ bool SketchObject::insertBSplineKnot(int GeoId, double param, int multiplicity)
                 QT_TRANSLATE_NOOP("Exceptions", "Knot cannot have zero multiplicity."));
     }
 
-    const auto* const geo{getGeometry(GeoId)};
+    const Part::Geometry* const geo{getGeometry(GeoId)};
     if (!geo->is<Part::GeomBSplineCurve>()) {
         THROWMT(Base::TypeError,
                 QT_TRANSLATE_NOOP("Exceptions",
@@ -7230,24 +7230,24 @@ bool SketchObject::insertBSplineKnot(int GeoId, double param, int multiplicity)
     }
 
     // Update the internal geometries, map poles and knots
-    auto findIndex = [](const auto& container, const auto& value) -> std::optional<int> {
-        if (auto it = std::find(container.begin(), container.end(), value); it != container.end()) {
-            return std::distance(container.begin(), it);
-        }
-        return std::nullopt;
+    auto indexFinderFor = [](const auto& container) {
+        return [&container](const auto& value) -> std::optional<int> {
+            if (auto it = std::find(container.begin(), container.end(), value); it != container.end()) {
+                return std::distance(container.begin(), it);
+            }
+            return std::nullopt;
+        };
     };
 
     const auto& poles{bsp->getPoles()};
     const auto& newPoles{bspline->getPoles()};
     std::vector<std::optional<int>> poleIndexInNew{std::size(poles)};
-    std::transform(poles.begin(), poles.end(), poleIndexInNew.begin(),
-                   [&newPoles, &findIndex](const auto& pole) { return findIndex(newPoles, pole); });
+    std::transform(poles.begin(), poles.end(), poleIndexInNew.begin(), indexFinderFor(newPoles));
 
     const auto& knots{bsp->getKnots()};
     const auto& newKnots{bspline->getKnots()};
     std::vector<std::optional<int>> knotIndexInNew{std::size(knots)};
-    std::transform(knots.begin(), knots.end(), knotIndexInNew.begin(),
-                   [&newKnots, &findIndex](auto knot) { return findIndex(newKnots, knot); });
+    std::transform(knots.begin(), knots.end(), knotIndexInNew.begin(), indexFinderFor(newKnots));
 
     // Handle constraints
     std::vector<int> geometryIdsToDelete{};
@@ -7281,7 +7281,7 @@ bool SketchObject::insertBSplineKnot(int GeoId, double param, int multiplicity)
             continue;
         }
 
-        auto* newConstr{constr->clone()};
+        Constraint* newConstr{constr->clone()};
         newConstr->InternalAlignmentIndex = indexInNew->at(constr->InternalAlignmentIndex).value();
         newcVals.emplace_back(newConstr);
     }

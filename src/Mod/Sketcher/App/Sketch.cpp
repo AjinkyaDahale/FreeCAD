@@ -5358,16 +5358,3 @@ TopoShape Sketch::toShape() const
 
     return result;
 }
-
-// Persistence implementer -------------------------------------------------
-
-unsigned int Sketch::getMemSize() const
-{
-    return 0;
-}
-
-void Sketch::Save(Writer&) const
-{}
-
-void Sketch::Restore(XMLReader&)
-{}

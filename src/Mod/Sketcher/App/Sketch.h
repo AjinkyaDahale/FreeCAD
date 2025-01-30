@@ -23,7 +23,7 @@
 #ifndef SKETCHER_SKETCH_H
 #define SKETCHER_SKETCH_H
 
-#include <Base/Persistence.h>
+#include <Base/BaseClass.h>
 #include <CXX/Objects.hxx>
 #include <Mod/Part/App/TopoShape.h>
 
@@ -37,18 +37,13 @@ namespace Sketcher
 // Forward declarations
 class SolverGeometryExtension;
 
-class SketcherExport Sketch: public Base::Persistence
+class SketcherExport Sketch: public Base::BaseClass
 {
     TYPESYSTEM_HEADER_WITH_OVERRIDE();
 
 public:
     Sketch();
     ~Sketch() override;
-
-    // from base class
-    unsigned int getMemSize() const override;
-    void Save(Base::Writer& /*writer*/) const override;
-    void Restore(Base::XMLReader& /*reader*/) override;
 
     /// solve the actual set up sketch
     int solve();

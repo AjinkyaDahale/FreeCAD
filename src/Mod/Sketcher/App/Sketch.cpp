@@ -4480,96 +4480,102 @@ int Sketch::internalSolve(std::string& solvername, int level)
     else {
         valid_solution = false;
         if (debugMode == GCS::Minimal || debugMode == GCS::IterationLevel) {
-
             Base::Console().Log("Sketcher::Solve()-%s- Failed!! Falling back...\n",
                                 solvername.c_str());
         }
     }
 
-    if (!valid_solution && !isInitMove) {  // Fall back to other solvers
-        for (int soltype = 0; soltype < 4; soltype++) {
+    if (valid_solution || isInitMove) {
+        // For OCCT reliant geometry that needs an extra solve() for example to update non-driving
+        // constraints.
+        if (resolveAfterGeometryUpdated && ret == GCS::Success && level == 0) {
+            return internalSolve(solvername, 1);
+        }
 
-            if (soltype == defaultsoltype) {
-                continue;  // skip default solver
-            }
+        return ret;
+    }
 
-            switch (soltype) {
-                case 0:
-                    solvername = "DogLeg";
-                    ret = GCSsys.solve(isFine, GCS::DogLeg);
-                    break;
-                case 1:  // solving with the LevenbergMarquardt solver
-                    solvername = "LevenbergMarquardt";
-                    ret = GCSsys.solve(isFine, GCS::LevenbergMarquardt);
-                    break;
-                case 2:  // solving with the BFGS solver
-                    solvername = "BFGS";
-                    ret = GCSsys.solve(isFine, GCS::BFGS);
-                    break;
-                // last resort: augment the system with a second subsystem and use the SQP solver
-                case 3:
-                    solvername = "SQP(augmented system)";
-                    InitParameters.resize(Parameters.size());
-                    int i = 0;
-                    for (auto it = Parameters.begin(); it != Parameters.end(); ++it, ++i) {
-                        InitParameters[i] = **it;
-                        GCSsys.addConstraintEqual(*it,
-                                                  &InitParameters[i],
-                                                  GCS::DefaultTemporaryConstraint);
-                    }
-                    GCSsys.initSolution();
-                    ret = GCSsys.solve(isFine);
-                    break;
-            }
+    for (int soltype = 0; soltype < 4; soltype++) {
+        if (soltype == defaultsoltype) {
+            continue;  // skip default solver
+        }
 
-            // if successfully solved try to write the parameters back
-            if (ret == GCS::Success) {
-                GCSsys.applySolution();
-                valid_solution = updateGeometry();
-                if (!valid_solution) {
-                    GCSsys.undoSolution();
-                    updateGeometry();
-                    Base::Console().Warning("Invalid solution from %s solver.\n",
-                                            solvername.c_str());
-                    ret = GCS::SuccessfulSolutionInvalid;
+        switch (soltype) {
+            case 0:
+                solvername = "DogLeg";
+                ret = GCSsys.solve(isFine, GCS::DogLeg);
+                break;
+            case 1:  // solving with the LevenbergMarquardt solver
+                solvername = "LevenbergMarquardt";
+                ret = GCSsys.solve(isFine, GCS::LevenbergMarquardt);
+                break;
+            case 2:  // solving with the BFGS solver
+                solvername = "BFGS";
+                ret = GCSsys.solve(isFine, GCS::BFGS);
+                break;
+            // last resort: augment the system with a second subsystem and use the SQP solver
+            case 3:
+                solvername = "SQP(augmented system)";
+                InitParameters.resize(Parameters.size());
+                int i = 0;
+                for (auto it = Parameters.begin(); it != Parameters.end(); ++it, ++i) {
+                    InitParameters[i] = **it;
+                    GCSsys.addConstraintEqual(*it,
+                                              &InitParameters[i],
+                                              GCS::DefaultTemporaryConstraint);
                 }
-                else {
-                    updateNonDrivingConstraints();
-                }
+                GCSsys.initSolution();
+                ret = GCSsys.solve(isFine);
+                break;
+        }
+
+        // if successfully solved try to write the parameters back
+        if (ret == GCS::Success) {
+            GCSsys.applySolution();
+            valid_solution = updateGeometry();
+            if (!valid_solution) {
+                GCSsys.undoSolution();
+                updateGeometry();
+                Base::Console().Warning("Invalid solution from %s solver.\n", solvername.c_str());
+                ret = GCS::SuccessfulSolutionInvalid;
             }
             else {
-                valid_solution = false;
-                if (debugMode == GCS::Minimal || debugMode == GCS::IterationLevel) {
-                    Base::Console().Log("Sketcher::Solve()-%s- Failed!! Falling back...\n",
-                                        solvername.c_str());
-                }
+                updateNonDrivingConstraints();
             }
-
-            if (soltype == 3) {  // cleanup temporary constraints of the augmented system
-                clearTemporaryConstraints();
+        }
+        else {
+            valid_solution = false;
+            if (debugMode == GCS::Minimal || debugMode == GCS::IterationLevel) {
+                Base::Console().Log("Sketcher::Solve()-%s- Failed!! Falling back...\n",
+                                    solvername.c_str());
             }
+        }
 
-            if (valid_solution) {
-                if (soltype == 1) {
-                    Base::Console().Log("Important: the LevenbergMarquardt solver succeeded where "
-                                        "the DogLeg solver had failed.\n");
-                }
-                else if (soltype == 2) {
-                    Base::Console().Log("Important: the BFGS solver succeeded where the DogLeg and "
-                                        "LevenbergMarquardt solvers have failed.\n");
-                }
-                else if (soltype == 3) {
-                    Base::Console().Log("Important: the SQP solver succeeded where all single "
-                                        "subsystem solvers have failed.\n");
-                }
-                else if (soltype > 0) {
-                    Base::Console().Log("All solvers failed.\n");
-                }
+        if (soltype == 3) {  // cleanup temporary constraints of the augmented system
+            clearTemporaryConstraints();
+        }
 
-                break;
-            }
-        }  // soltype
-    }
+        if (!valid_solution) {
+            continue;
+        }
+
+        if (soltype == 1) {
+            Base::Console().Log("Important: the LevenbergMarquardt solver succeeded where "
+                                "the DogLeg solver had failed.\n");
+        }
+        else if (soltype == 2) {
+            Base::Console().Log("Important: the BFGS solver succeeded where the DogLeg and "
+                                "LevenbergMarquardt solvers have failed.\n");
+        }
+        else if (soltype == 3) {
+            Base::Console().Log("Important: the SQP solver succeeded where all single "
+                                "subsystem solvers have failed.\n");
+        }
+        else if (soltype > 0) {
+            Base::Console().Log("All solvers failed.\n");
+        }
+        break;
+    }  // soltype
 
     // For OCCT reliant geometry that needs an extra solve() for example to update non-driving
     // constraints.

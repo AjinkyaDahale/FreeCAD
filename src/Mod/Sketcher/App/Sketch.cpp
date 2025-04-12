@@ -4990,44 +4990,44 @@ int Sketch::moveGeometries(std::vector<GeoElementId> geoEltIds,
         initToPoint = toPoint;
         moveStep = 0;
     }
-    else {
-        if (!relative && RecalculateInitialSolutionWhileMovingPoint) {
-            if (moveStep == 0) {
-                moveStep = (toPoint - initToPoint).Length();
-            }
-            else {
-                // I am getting too far away from the original solution so reinit the solution
-                if ((toPoint - initToPoint).Length() > 20 * moveStep) {
-                    initMove(geoEltIds);
-                    initToPoint = toPoint;
-                }
-            }
+    else if (!relative && RecalculateInitialSolutionWhileMovingPoint) {
+        if (moveStep == 0) {
+            moveStep = (toPoint - initToPoint).Length();
+        }
+        else if ((toPoint - initToPoint).Length() > 20 * moveStep) {
+            // I am getting too far away from the original solution so reinit the solution
+            initMove(geoEltIds);
+            initToPoint = toPoint;
         }
     }
+
 
     if (relative) {
         for (size_t i = 0; i < MoveParameters.size() - 1; i += 2) {
             MoveParameters[i] = InitParameters[i] + toPoint.x;
             MoveParameters[i + 1] = InitParameters[i + 1] + toPoint.y;
         }
+        return solve();
     }
-    else {
-        size_t i = 0;
-        for (auto& pair : geoEltIds) {
-            if (i >= MoveParameters.size()) {
-                break;
-            }
-            int geoId = checkGeoId(pair.GeoId);
-            Sketcher::PointPos pos = pair.Pos;
 
-            if (Geoms[geoId].type == Point) {
+    // `relative == false` from here on
+    size_t i = 0;
+    for (auto& pair : geoEltIds) {
+        if (i >= MoveParameters.size()) {
+            break;
+        }
+        int geoId = checkGeoId(pair.GeoId);
+        Sketcher::PointPos pos = pair.Pos;
+
+        switch (Geoms[geoId].type) {
+            case Point: {
                 if (pos == PointPos::start) {
                     MoveParameters[i] = toPoint.x;
                     MoveParameters[i + 1] = toPoint.y;
                     i += 2;
                 }
-            }
-            else if (Geoms[geoId].type == Line) {
+            } break;
+            case Line: {
                 if (pos == PointPos::start || pos == PointPos::end) {
                     MoveParameters[i] = toPoint.x;
                     MoveParameters[i + 1] = toPoint.y;
@@ -5042,21 +5042,24 @@ int Sketch::moveGeometries(std::vector<GeoElementId> geoEltIds,
                     MoveParameters[i + 3] = toPoint.y + dy;
                     i += 4;
                 }
-            }
-            else if (Geoms[geoId].type == Circle || Geoms[geoId].type == Ellipse) {
+            } break;
+            case Circle:
+            case Ellipse: {
                 if (pos == PointPos::mid || pos == PointPos::none) {
                     MoveParameters[i] = toPoint.x;
                     MoveParameters[i + 1] = toPoint.y;
                     i += 2;
                 }
-            }
-            else if (Geoms[geoId].type == Arc || Geoms[geoId].type == ArcOfEllipse
-                     || Geoms[geoId].type == ArcOfHyperbola || Geoms[geoId].type == ArcOfParabola) {
+            } break;
+            case Arc:
+            case ArcOfEllipse:
+            case ArcOfHyperbola:
+            case ArcOfParabola: {
                 MoveParameters[i] = toPoint.x;
                 MoveParameters[i + 1] = toPoint.y;
                 i += 2;
-            }
-            else if (Geoms[geoId].type == BSpline) {
+            } break;
+            case BSpline: {
                 if (pos == PointPos::start || pos == PointPos::end) {
                     MoveParameters[i] = toPoint.x;
                     MoveParameters[i + 1] = toPoint.y;
@@ -5082,7 +5085,9 @@ int Sketch::moveGeometries(std::vector<GeoElementId> geoEltIds,
                     }
                     i += bsp.poles.size() * 2;
                 }
-            }
+            } break;
+            default:
+                break;
         }
     }
 

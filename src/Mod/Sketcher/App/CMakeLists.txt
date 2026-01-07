@@ -62,6 +62,8 @@ SET(Features_SRCS
     SolverGeometryExtension.h
     SketchObject.cpp
     SketchObject.h
+    SketchOperations.cpp
+    SketchOperations.h
     SketchAnalysis.h
     SketchAnalysis.cpp
     Analyse.h
